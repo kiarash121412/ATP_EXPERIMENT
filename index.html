@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آزمون تصمیم‌گیری ادراکی ATP</title>
+
+    <!-- لود کردن کتابخانه‌های jsPsych از unpkg (لینک‌های اصلاح‌شده) -->
+    <script src="https://unpkg.com/jspsych@7.3.4"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-slider-response@1.1.3"></script>
+    <link href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css" rel="stylesheet" type="text/css" />
+
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+        .jspsych-content { max-width: 900px; margin: 40px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dot-container { display: flex; justify-content: center; align-items: center; gap: 40px; margin: 30px 0; }
+        .dot-box { width: 180px; height: 180px; background-color: #333; position: relative; border-radius: 8px; border: 3px solid #222; }
+        .dot { width: 6px; height: 6px; background-color: white; border-radius: 50%; position: absolute; }
+        .instruction-box { line-height: 1.9; text-align: right; }
+        .progress-text { position: fixed; top: 10px; left: 10px; font-size: 14px; color: #666; background: white; padding: 5px 10px; border-radius: 5px; z-index: 100; }
+        .slider-container { padding: 20px; }
+        .jspsych-btn { font-size: 18px; padding: 10px 25px; background-color: #4a7dff; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        .jspsych-btn:hover { background-color: #3a6aee; }
+    </style>
+</head>
+<body>
+    <!-- این خط بسیار مهم است: jsPsych محتوا را داخل این div قرار می‌دهد -->
+    <div id="jspsych-target"></div>
+
+    <script>
+        // ۱. راه‌اندازی اولیه jsPsych
+        const jsPsych = initJsPsych({
+            display_element: 'jspsych-target'
+        });
+
+        // ---------- متغیرهای اصلی ----------
+        const NUM_TRIALS = 50; // برای تست روی ۱۰ گذاشتم. بعداً به ۱۰۰ تغییر بده.
+        const DOTS_BASE = 50;
+        const DIFFICULTY_EASY = 15;
+        const DIFFICULTY_HARD = 6;
+
+        let full_timeline = [];
+
+        // ---------- تابع ساخت مربع نقاط ----------
+        function makeDotBox(numDots) {
+            let dotsHTML = "";
+            for (let i = 0; i < numDots; i++) {
+                const x = Math.random() * 165 + 7;
+                const y = Math.random() * 165 + 7;
+                dotsHTML += '<div class="dot" style="left:' + x + 'px; top:' + y + 'px;"></div>';
+            }
+            return '<div class="dot-box">' + dotsHTML + '</div>';
+        }
+
+        // ---------- صفحه خوش‌آمد ----------
+        const welcome_trial = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="instruction-box">
+                    <h2>آزمون تصمیم‌گیری ادراکی ATP</h2>
+                    <p>دانش‌آموز عزیز، به آزمون خوش آمدی.</p>
+                    <p>در هر دور، دو مربع می‌بینی که در هر کدام تعدادی نقطه وجود دارد. وظیفهٔ تو این است که <b>هرچه سریع‌تر و دقیق‌تر</b> انتخاب کنی که کدام مربع نقطه‌های بیشتری دارد.</p>
+                    <p>• کلید <b>F</b> = انتخاب مربع سمت چپ</p>
+                    <p>• کلید <b>J</b> = انتخاب مربع سمت راست</p>
+                    <p>بعد از هر انتخاب، سطح اطمینان خود را از ۰ تا ۱۰۰ گزارش کن.</p>
+                    <p style="color: blue; font-weight: bold;">برای شروع، کلید Space (فاصله) را بزن.</p>
+                </div>
+            `,
+            choices: [" "],
+            on_finish: function () {
+                jsPsych.data.addProperties({
+                    participant_id: "TestUser",
+                    start_time: new Date().toISOString()
+                });
+            }
+        };
+
+        // ---------- ساخت دورها ----------
+        for (let trialNum = 0; trialNum < NUM_TRIALS; trialNum++) {
+            const isEasy = Math.random() < 0.5;
+            const diff = isEasy ? DIFFICULTY_EASY : DIFFICULTY_HARD;
+            let leftDots = DOTS_BASE - diff / 2;
+            let rightDots = DOTS_BASE + diff / 2;
+
+            if (Math.random() < 0.5) {
+                const temp = leftDots;
+                leftDots = rightDots;
+                rightDots = temp;
+            }
+
+            const correctChoice = leftDots > rightDots ? "f" : "j";
+            const leftBoxHTML = makeDotBox(leftDots);
+            const rightBoxHTML = makeDotBox(rightDots);
+
+            const decision_trial = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `
+                    <div class="progress-text">دور ${trialNum + 1} از ${NUM_TRIALS}</div>
+                    <p style="font-size:18px;">کدام مربع نقطه‌های بیشتری دارد؟</p>
+                    <div class="dot-container">
+                        ${leftBoxHTML}
+                        ${rightBoxHTML}
+                    </div>
+                    <p style="font-size:14px; color:#666;">کلید F = چپ | کلید J = راست</p>
+                `,
+                choices: ["f", "j"],
+                data: {
+                    trial_number: trialNum + 1,
+                    difficulty: isEasy ? "easy" : "hard",
+                    diff_value: diff,
+                    left_dots: leftDots,
+                    right_dots: rightDots,
+                    correct_choice: correctChoice,
+                    phase: "decision"
+                },
+                on_finish: function (data) {
+                    data.correct = data.response === data.correct_choice;
+                }
+            };
+
+            const confidence_trial = {
+                type: jsPsychHtmlSliderResponse,
+                stimulus: `
+                    <div class="slider-container">
+                        <p style="font-size:18px;">چقدر به انتخاب خود اطمینان داری؟</p>
+                        <p style="font-size:14px; color:#666;">(۰ = کاملاً حدس زده‌ام | ۱۰۰ = کاملاً مطمئنم)</p>
+                    </div>
+                `,
+                labels: ["۰", "۱۰۰"],
+                min: 0,
+                max: 100,
+                start: 50,
+                step: 1,
+                require_movement: true,
+                button_label: "ثبت اطمینان",
+                data: {
+                    trial_number: trialNum + 1,
+                    phase: "confidence"
+                }
+            };
+
+            full_timeline.push(decision_trial);
+            full_timeline.push(confidence_trial);
+        }
+
+        // ---------- صفحهٔ پایان ----------
+        const end_trial = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <div class="instruction-box">
+                    <h2>از مشارکت شما سپاسگزاریم!</h2>
+                    <p>داده‌های شما با موفقیت ذخیره شد.</p>
+                    <p>لطفاً روی دکمهٔ زیر کلیک کن تا فایل داده‌ها دانلود شود.</p>
+                    <button class="jspsych-btn" onclick="saveData()">دانلود داده‌ها</button>
+                </div>
+            `,
+            choices: "NO_KEYS"
+        };
+
+        // ---------- تابع ذخیره ----------
+        function saveData() {
+            const pid = jsPsych.data.get().values()[0].participant_id || "unknown";
+            const filename = "ATP_data_" + pid + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+            jsPsych.data.get().localSave("csv", filename);
+        }
+
+        // ---------- اجرای نهایی آزمون ----------
+        jsPsych.run([welcome_trial].concat(full_timeline).concat([end_trial]));
+
+    </script>
+</body>
+</html>
